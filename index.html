@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>格赫罗斯の恶堕</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #f00;
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    border: 4px solid #f00;
+  }
+  .screen {
+    display: none;
+    min-height: 100vh;
+    padding: 20px;
+    position: relative;
+  }
+  .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  
+  /* Start */
+  #start-screen h1 {
+    font-size: 3.2rem;
+    color: #f00;
+    text-shadow: 0 0 20px #f00, 0 0 40px #800;
+    margin-bottom: 60px;
+    letter-spacing: 8px;
+    text-align: center;
+  }
+  .btn {
+    background: #f00;
+    color: #000;
+    border: none;
+    padding: 16px 48px;
+    font-size: 1.4rem;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    margin: 10px;
+  }
+  .btn:hover { background: #ff3333; transform: scale(1.05); box-shadow: 0 0 20px #f00; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  
+  /* Select */
+  #select-screen h2 {
+    color: #f00;
+    font-size: 2rem;
+    margin-bottom: 40px;
+    text-shadow: 0 0 10px #f00;
+  }
+  .trainer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 600px;
+  }
+  .trainer-btn {
+    width: 220px;
+    height: 80px;
+    font-size: 1.5rem;
+  }
+  
+  /* Game */
+  #game-screen {
+    justify-content: flex-start;
+    padding-top: 60px;
+  }
+  #stats {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    color: #ff69b4;
+    font-size: 1.05rem;
+    line-height: 1.8;
+    text-shadow: 0 0 8px #ff69b4;
+    z-index: 10;
+  }
+  #day-display {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    color: #f00;
+    font-size: 1.6rem;
+    font-weight: bold;
+    text-shadow: 0 0 10px #f00;
+    z-index: 10;
+  }
+  #remaining {
+    color: #ffaaaa;
+    margin: 15px 0;
+    font-size: 1.1rem;
+  }
+  #action-area {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin: 20px 0;
+    max-width: 900px;
+  }
+  .action-btn {
+    min-width: 160px;
+    padding: 14px 20px;
+    font-size: 1.1rem;
+  }
+  #log {
+    width: 90%;
+    max-width: 800px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: #111;
+    border: 2px solid #600;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 10px;
+    color: #ffcccc;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+  #log p {
+    margin-bottom: 12px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+  }
+  #log .highlight { color: #ff69b4; font-weight: bold; }
+  
+  /* Modal */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal.show { display: flex; }
+  .modal-content {
+    padding: 40px 50px;
+    border-radius: 8px;
+    text-align: center;
+    max-width: 500px;
+    animation: popIn 0.3s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal-content h3 { font-size: 1.5rem; margin-bottom: 20px; }
+  .modal-content p { font-size: 1.1rem; line-height: 1.6; margin-bottom: 25px; }
+  
+  /* Flash overlays */
+  .flash {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0;
+  }
+  .flash-red { background: #f00; animation: flashAnim 0.6s; }
+  .flash-pink { background: #ff69b4; animation: flashAnim 0.6s; }
+  .flash-deep { background: #ff1493; animation: flashAnim 0.7s; }
+  @keyframes flashAnim {
+    0% { opacity: 0.7; }
+    50% { opacity: 0.3; }
+    100% { opacity: 0; }
+  }
+  
+  /* Summary & Ending */
+  #summary-content, #ending-content {
+    background: #111;
+    border: 3px solid #f00;
+    color: #ffaaaa;
+    padding: 30px 40px;
+    border-radius: 10px;
+    max-width: 600px;
+    text-align: center;
+  }
+  #ending-content h1 {
+    font-size: 2.4rem;
+    margin-bottom: 15px;
+  }
+  .ending-tag {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 8px 24px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    border-radius: 4px;
+  }
+  .bad { background: #f00; color: #000; }
+  .good { background: #ff69b4; color: #000; }
+  .hidden { background: #ffb6c1; color: #400; }
+  
+  .continue-btn { margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div id="start-screen" class="screen active">
+  <h1>格赫罗斯の恶堕</h1>
+  <button class="btn" onclick="startGame()">开始游戏</button>
+  <br>
+  <button class="btn" style="background:#ff69b4; margin-top:20px;" onclick="showEndingGallery()">结局图鉴</button>
+</div>
+
+<!-- ENDING GALLERY MODAL -->
+<div id="gallery-modal" class="modal">
+  <div class="modal-content" style="background:#111; color:#ffaaaa; border:3px solid #f00; max-width:620px; max-height:80vh; overflow-y:auto; text-align:left;">
+    <h3 style="color:#f00; text-align:center; margin-bottom:15px;">结局图鉴</h3>
+    <div id="gallery-list" style="font-size:0.95rem; line-height:1.7;"></div>
+    <div style="text-align:center; margin-top:20px;">
+      <button class="btn" onclick="closeGallery()">关闭</button>
+      <button class="btn" style="background:#600; color:#faa; margin-left:15px;" onclick="resetAllEndings()">重置（慎点）</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRAINER SELECT -->
+<div id="select-screen" class="screen">
+  <h2>选择调教师</h2>
+  <div class="trainer-grid">
+    <button class="btn trainer-btn" onclick="selectTrainer('hudson')">哈德森</button>
+    <button class="btn trainer-btn" onclick="selectTrainer('jacob')">雅各布</button>
+    <button class="btn trainer-btn" onclick="selectTrainer('raven')">渡鸦</button>
+    <button class="btn trainer-btn" onclick="selectTrainer('prometheus')">罗米修斯</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen" class="screen">
+  <div id="stats">
+    <span style="color:#ff69b4;">好感度：<span id="s-affection">0</span></span><br>
+    <span style="color:#ff2222;">憎恶度：<span id="s-hatred">0</span></span><br>
+    <br>
+    乳头敏感度：<span id="s-nipple">0</span><br>
+    阴蒂敏感度：<span id="s-clit">0</span><br>
+    后穴敏感度：<span id="s-anal">0</span><br>
+    小逼敏感度：<span id="s-pussy">0</span>
+  </div>
+  <div id="day-display">DAY 1</div>
+  
+  <div id="remaining">今日剩余调教次数：<span id="rem-count">5</span></div>
+  
+  <div id="action-area"></div>
+  
+  <div id="log"></div>
+</div>
+
+<!-- DAY SUMMARY MODAL -->
+<div id="summary-modal" class="modal">
+  <div id="summary-content">
+    <h3 style="color:#f00;">第 <span id="sum-day">1</span> 日总结</h3>
+    <div id="sum-text" style="text-align:left; margin:15px 0; line-height:1.7;"></div>
+    <button class="btn continue-btn" onclick="nextDay()">进入下一天</button>
+  </div>
+</div>
+
+<!-- THRESHOLD POPUP -->
+<div id="threshold-modal" class="modal">
+  <div id="threshold-content" class="modal-content">
+    <h3 id="th-title"></h3>
+    <p id="th-msg"></p>
+    <button class="btn" onclick="closeThreshold()">继续</button>
+  </div>
+</div>
+
+<!-- ENDING -->
+<div id="ending-screen" class="screen">
+  <div id="ending-content">
+    <h1 id="end-title"></h1>
+    <p id="end-desc" style="font-size:1.2rem; margin:15px 0;"></p>
+    <div id="end-tag" class="ending-tag"></div>
+    <br><br>
+    <div id="end-buttons">
+      <button class="btn" onclick="location.reload()">重新开始</button>
+    </div>
+  </div>
+</div>
+
+<!-- INVITE MODAL (好感150) -->
+<div id="invite-modal" class="modal">
+  <div class="modal-content" style="background:#fff0f5; color:#c71585; border:3px solid #ff69b4;">
+    <h3>邀请</h3>
+    <p id="invite-msg">格赫罗斯犹豫的想邀请你操他……</p>
+    <button class="btn" style="background:#ff69b4; margin:8px;" onclick="handleInvite(true)">是</button>
+    <button class="btn" style="background:#ffb6c1; color:#333; margin:8px;" onclick="handleInvite(false)">否</button>
+  </div>
+</div>
+
+<!-- Flash overlays -->
+<div id="flash" class="flash"></div>
+
+<script>
+// ========== 结局图鉴 & 存档 ==========
+const ENDING_DB = {
+  bad: { name: '坏结局（玩死）', how: '任意调教师线路中，让四个敏感部位全部达到200。' },
+  betray: { name: '背叛结局', how: '任意调教师线路中，通过「虐待」让憎恶度超过200。' },
+  jacob_good: { name: '雅各布线路 · 好结局（骚小狗）', how: '选择雅各布，正常通关10天且憎恶度≤100。' },
+  jacob_hate: { name: '雅各布线路 · 恨意残留（他恨你，但是无法拒绝你）', how: '选择雅各布，正常通关10天且憎恶度在101~199之间。' },
+  raven_good: { name: '渡鸦线路 · 好结局（肥美飞机杯）', how: '选择渡鸦，正常通关10天且憎恶度≤100。' },
+  raven_hate: { name: '渡鸦线路 · 恨意残留（谁说囚犯不能在典狱长头上拉屎？）', how: '选择渡鸦，正常通关10天且憎恶度在101~199之间。' },
+  hudson_good: { name: '哈德森线路 · 好结局（实用肉便器）', how: '选择哈德森，正常通关10天且憎恶度≤100。' },
+  hudson_hate: { name: '哈德森线路 · 恨意残留（一条不那么乖训的狗）', how: '选择哈德森，正常通关10天且憎恶度在101~199之间。' },
+  prometheus_good: { name: '罗米修斯线路 · 好结局（最佳试验品）', how: '选择罗米修斯，正常通关10天且憎恶度≤100。' },
+  prometheus_hate: { name: '罗米修斯线路 · 恨意残留（带着淫乱的护卫）', how: '选择罗米修斯，正常通关10天且憎恶度在101~199之间。' },
+  hidden: { name: '隐藏结局（忠心的乖小狗）', how: '任意调教师，全程10天只选择「安抚，不玩弄」。' },
+  perfect_lover: { name: '完美恋人', how: '隐藏结局后进入「继续培养」，好感达到200，且依赖>100、羞耻<50。' },
+  shy_lover: { name: '羞涩的恋人', how: '隐藏结局后进入「继续培养」，好感达到200，且依赖>100、羞耻>50。' },
+  independent_lover: { name: '不愿依赖的恋人', how: '隐藏结局后进入「继续培养」，好感达到200，且依赖<100、羞耻<50。' },
+  slutty_lover: { name: '浪荡的恋人', how: '隐藏结局后进入「继续培养」，好感达到200，其他依赖/羞耻组合。' },
+  normal_train: { name: '普通驯化结局', how: '隐藏结局后进入「继续培养」，10天结束时好感未达200，且依赖<200、羞耻>50。' },
+  fuckbuddy: { name: '好用的炮友', how: '隐藏结局后进入「继续培养」，10天结束时好感未达200，且依赖≥200、羞耻<50。' }
+};
+
+function loadUnlocked() {
+  try {
+    return JSON.parse(localStorage.getItem('gerros_endings') || '{}');
+  } catch(e) { return {}; }
+}
+
+function saveUnlocked(data) {
+  localStorage.setItem('gerros_endings', JSON.stringify(data));
+}
+
+function unlockEnding(key) {
+  const data = loadUnlocked();
+  if (!data[key]) {
+    data[key] = true;
+    saveUnlocked(data);
+  }
+}
+
+function showEndingGallery() {
+  const data = loadUnlocked();
+  const list = document.getElementById('gallery-list');
+  let html = '';
+  const keys = Object.keys(ENDING_DB);
+  keys.forEach((k, i) => {
+    const e = ENDING_DB[k];
+    const unlocked = !!data[k];
+    html += `<div style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid #333;">`;
+    html += `<b style="color:${unlocked ? '#ff69b4' : '#666'};">${i+1}. ${e.name}</b>`;
+    if (unlocked) {
+      html += `<br><span style="color:#aaa; font-size:0.88rem;">通关方法：${e.how}</span>`;
+    } else {
+      html += `<br><span style="color:#555; font-size:0.88rem;">通关方法：？？？（尚未解锁）</span>`;
+    }
+    html += `</div>`;
+  });
+  list.innerHTML = html;
+  document.getElementById('gallery-modal').classList.add('show');
+}
+
+function closeGallery() {
+  document.getElementById('gallery-modal').classList.remove('show');
+}
+
+function resetAllEndings() {
+  if (confirm('确定要重置所有结局图鉴进度吗？\n\n此操作会把全部结局恢复为「未通关」状态，且无法撤销。')) {
+    localStorage.removeItem('gerros_endings');
+    alert('已重置！所有结局图鉴已恢复为未通关状态。');
+    // 刷新当前图鉴显示
+    showEndingGallery();
+  }
+}
+
+// ========== STATE ==========
+let day = 1;
+let sens = { nipple: 0, clit: 0, anal: 0, pussy: 0 };
+let affection = 0;
+let hatred = 0;
+let dependence = 0;
+let shame = 0;
+let trainer = '';
+let remaining = 5;
+let comfortOnly = true;
+let dayAllComfort = true;  // 当天是否全部只选了安抚
+let actionLog = [];
+let hatredWarned = false;  // 是否已弹出过 >100 的警告
+let isCultivate = false;   // 是否进入继续培养模式
+let inviteTriggered = false;
+let milestones = {
+  nipple: {50:false,80:false,100:false,150:false,200:false},
+  clit: {50:false,80:false,100:false,150:false,200:false},
+  anal: {50:false,80:false,100:false,150:false,200:false},
+  pussy: {50:false,80:false,100:false,150:false,200:false}
+};
+
+const partName = {
+  nipple: '乳头',
+  clit: '阴蒂',
+  anal: '后穴',
+  pussy: '小逼'
+};
+
+// ========== TRAINER ACTIONS ==========
+const actions = {
+  hudson: [
+    { id: 'nipple', name: '揉弄乳头', baseMin: 8, baseMax: 16 },
+    { id: 'clit', name: '揉捏阴蒂', baseMin: 8, baseMax: 16 },
+    { id: 'anal', name: '后穴灌肠', baseMin: 8, baseMax: 16 },
+    { id: 'pussy', name: '爱抚小逼', baseMin: 8, baseMax: 16 },
+    { id: 'comfort', name: '安抚，不玩弄', baseMin: 0, baseMax: 0 },
+    { id: 'abuse', name: '虐待（毁坏性）', baseMin: 0, baseMax: 0 }
+  ],
+  jacob: [
+    { id: 'nipple', name: '使用乳夹', baseMin: 10, baseMax: 18 },
+    { id: 'clit', name: '使用阴蒂吮吸玩具', baseMin: 10, baseMax: 18 },
+    { id: 'anal', name: '使用小号肛塞抽插', baseMin: 10, baseMax: 18 },
+    { id: 'pussy', name: '轻轻扇小逼', baseMin: 10, baseMax: 18 },
+    { id: 'comfort', name: '安抚，不玩弄', baseMin: 0, baseMax: 0 },
+    { id: 'abuse', name: '虐待（精神控制）', baseMin: 0, baseMax: 0 }
+  ],
+  raven: [
+    { id: 'nipple', name: '啃咬乳头', baseMin: 8, baseMax: 20 },
+    { id: 'clit', name: '拉扯阴蒂', baseMin: 8, baseMax: 20 },
+    { id: 'anal', name: '指奸后穴', baseMin: 8, baseMax: 20 },
+    { id: 'pussy', name: '把枪口塞进逼里', baseMin: 8, baseMax: 20 },
+    { id: 'comfort', name: '安抚，不玩弄', baseMin: 0, baseMax: 0 },
+    { id: 'abuse', name: '虐待（粗暴）', baseMin: 0, baseMax: 0 }
+  ],
+  prometheus: [
+    { id: 'nipple', name: '扇乳房巴掌', baseMin: 12, baseMax: 18 },
+    { id: 'clit', name: '踩踩阴蒂', baseMin: 12, baseMax: 18 },
+    { id: 'anal', name: '后穴灌肠', baseMin: 12, baseMax: 18 },
+    { id: 'pussy', name: '轻轻扇小逼', baseMin: 12, baseMax: 18 },
+    { id: 'comfort', name: '安抚，不玩弄', baseMin: 0, baseMax: 0 },
+    { id: 'abuse', name: '虐待（直接）', baseMin: 0, baseMax: 0 }
+  ]
+};
+
+// ========== TEXT POOLS (sensory descriptions) ==========
+// Multiple unique texts per action, intensity scales with day
+const texts = {
+  hudson: {
+    nipple: [
+      "哈德森粗糙的手指捏住格赫罗斯的乳尖，缓缓揉弄。电流般的酥麻从胸口扩散，他忍不住轻轻颤了一下。",
+      "指腹带着薄茧来回碾压敏感的乳头，格赫罗斯咬着下唇，呼吸渐渐乱了节奏。",
+      "哈德森用拇指和食指夹住乳尖轻轻拉扯，又突然松开，反复几次后，格赫罗斯的胸口开始发烫。",
+      "两只手同时照顾两边乳头，时而轻柔时而用力，格赫罗斯的腰不自觉地往前送。",
+      "哈德森把脸埋过去，用嘴唇含住一边乳头吮吸，同时手指玩弄另一边，格赫罗斯发出细碎的呜咽。"
+    ],
+    clit: [
+      "哈德森的手指精准地找到那颗肿胀的阴蒂，轻轻揉捏。格赫罗斯猛地弓起身子，喉咙里挤出一声压抑的喘息。",
+      "指尖沾了点湿润，在阴蒂上打着圈。快感像细小的电流不断累积，格赫罗斯的腿开始发软。",
+      "哈德森用两指夹住阴蒂轻轻搓揉，时快时慢。格赫罗斯的小腹一阵阵地收缩。",
+      "粗糙的指腹直接按压阴蒂，用力碾过，格赫罗斯几乎要叫出声，身体本能地想夹紧双腿。",
+      "哈德森低声笑着加快了揉捏的频率，格赫罗斯的眼前开始发白，敏感点被持续刺激得发颤。"
+    ],
+    anal: [
+      "温热的灌肠液缓缓注入后穴。格赫罗斯能清楚感受到液体在体内流动、填充的异样感，小腹渐渐鼓胀。",
+      "哈德森控制着流量，一下一下把液体灌进去。格赫罗斯的后穴被迫张开，羞耻与奇怪的充实感同时涌上。",
+      "灌肠过程中哈德森偶尔用手指按压穴口，格赫罗斯忍不住轻哼，身体因为被填满而微微发抖。",
+      "液体量逐渐增多，格赫罗斯感觉小腹发胀，后穴被撑开的感觉让他既难受又隐隐期待。",
+      "当液体几乎要满溢时，哈德森堵住穴口，命令他忍住。格赫罗斯的眼眶都红了，身体紧绷。"
+    ],
+    pussy: [
+      "哈德森的手指沿着湿润的缝隙轻轻滑动，时而分开肉瓣，时而浅浅探入。格赫罗斯的呼吸变得急促。",
+      "指腹温柔地按摩着小逼的入口，偶尔刮过阴蒂下方。格赫罗斯的腰跟着他的动作轻轻扭动。",
+      "哈德森用整个手掌包住那处，缓慢而有力地揉弄。湿润的声音在安静中格外清晰。",
+      "两根手指浅浅插入又抽出，故意不深入，只在入口处搅动。格赫罗斯难受地想要更多。",
+      "哈德森低头看了一眼已经湿透的小逼，笑着加快了爱抚的速度，格赫罗斯的腿根开始发颤。"
+    ],
+    comfort: [
+      "哈德森只是把格赫罗斯揽进怀里，手掌顺着背脊一下下安抚。格赫罗斯把脸埋在他肩窝，慢慢平静下来。",
+      "今天没有激烈的玩弄。哈德森给他擦干净身体，低声说了几句无关紧要的话，格赫罗斯竟觉得有些安心。",
+      "哈德森用毛巾轻轻擦拭他的汗水，动作很轻。格赫罗斯闭着眼睛，难得没有那么紧绷。",
+      "只是简单的拥抱和抚摸头发。格赫罗斯靠在他身上，心跳慢慢恢复平稳。",
+      "哈德森没有碰那些敏感的地方，只是安静地陪着他。格赫罗斯悄悄抓紧了他的衣角。"
+    ],
+    abuse: [
+      "哈德森突然用力掐住格赫罗斯的下巴，迫使他抬头。眼神冷漠而带着毁坏欲，像是在打量一件可以随意拆解的物品。",
+      "他没有温情，直接用手指狠狠抠进已经敏感的小逼，带着明显的破坏意图。格赫罗斯痛得弓起身子，却被死死按住。",
+      "哈德森把灌肠的量推到极限，同时压住小腹不让他排出。格赫罗斯的眼眶通红，身体因为过度填充而颤抖，仇恨开始在心里生根。",
+      "他故意在最敏感的时候突然停下，然后用更粗暴的方式重新开始。格赫罗斯的身体被当成可以随意损坏的工具。",
+      "哈德森低声说着侮辱的话，同时用力揉弄已经红肿的部位，动作里没有半点怜惜，只有纯粹的毁坏。"
+    ]
+  },
+  jacob: {
+    nipple: [
+      "冰凉的乳夹夹上乳尖的瞬间，格赫罗斯倒吸一口气。沉重的坠感让乳头不断被拉扯，每一次呼吸都带来细密的痛感和快感。",
+      "雅各布调节了乳夹的松紧，让它咬得更紧一些。格赫罗斯的胸口剧烈起伏，乳尖已经充血发红。",
+      "乳夹随着他身体的轻微晃动而晃动，拉扯感持续不断。格赫罗斯忍不住用手去碰，却被雅各布按住。",
+      "雅各布故意弹了一下夹子，金属碰撞的细微声响后是更强烈的刺激。格赫罗斯的腿软了一下。",
+      "两边乳头都被夹住，沉重的重量让格赫罗斯几乎站不稳。他只能咬着牙承受这份持续的折磨。"
+    ],
+    clit: [
+      "吮吸玩具贴上阴蒂的瞬间，强烈的吸力让格赫罗斯猛地叫出声。酥麻感几乎要从尾椎窜上天灵盖。",
+      "雅各布调节着吸力大小，时强时弱。格赫罗斯的小逼不受控制地收缩，透明的液体不断渗出。",
+      "玩具精准地含住那颗小核，持续吮吸。格赫罗斯的手指抓紧床单，呼吸彻底乱了。",
+      "当吸力突然加大，格赫罗斯的腰猛地弹起，又被雅各布按回去。快感堆积得太快，他几乎要崩溃。",
+      "雅各布让玩具一直工作着，偶尔移动位置。格赫罗斯已经说不出完整的句子，只剩下断断续续的呻吟。"
+    ],
+    anal: [
+      "小号肛塞被缓缓推入。格赫罗斯能感觉到每一寸被撑开的感觉，后穴本能地想要排斥异物。",
+      "雅各布开始缓慢抽插。肛塞进出时带出黏腻的声响，格赫罗斯的脸烧得厉害。",
+      "抽插的速度逐渐加快，格赫罗斯的后穴被彻底打开，奇怪的快感从深处涌上来。",
+      "雅各布故意在最深处停顿，旋转着肛塞。格赫罗斯的腿根发抖，后穴不受控制地收缩。",
+      "持续的抽插让后穴又酸又胀，格赫罗斯已经分不清是难受还是舒服，只能任由身体被摆布。"
+    ],
+    pussy: [
+      "雅各布抬起手，轻轻在湿润的小逼上扇了一下。清脆的响声后是火辣的刺痛与快感交织。",
+      "一下、两下……力度不算重，却精准地落在敏感处。格赫罗斯的腰跟着每一次拍打轻轻颤抖。",
+      "扇打的同时雅各布用另一只手按住他的小腹，不让他躲。格赫罗斯只能张开腿承受。",
+      "拍打声和水声混在一起。格赫罗斯的小逼已经红肿，却还在不断渗出液体。",
+      "雅各布故意在扇完后用指尖轻轻刮过被打过的地方，格赫罗斯敏感得几乎要跳起来。"
+    ],
+    comfort: [
+      "雅各布把乳夹和玩具都取下，用温热的毛巾轻轻擦拭。格赫罗斯靠在他怀里，轻轻喘息。",
+      "今天到此为止。雅各布帮他整理好衣服，手掌放在他后颈轻轻摩挲，格赫罗斯慢慢放松下来。",
+      "没有继续的玩弄。雅各布只是让他躺着休息，偶尔递水给他喝。格赫罗斯难得有片刻安宁。",
+      "雅各布用指腹轻轻按压他酸痛的地方，力道很轻。格赫罗斯闭着眼睛，几乎要睡着。",
+      "安静的拥抱。雅各布没有说话，只是把下巴搁在他头顶。格赫罗斯的心跳慢慢平稳。"
+    ],
+    abuse: [
+      "雅各布没有动手，只是用极低的声音在他耳边说着最伤人的话。格赫罗斯的身体没有受伤，心却被一点点撕开。",
+      "他故意让格赫罗斯保持着最羞耻的姿势，然后长时间不碰他，只是冷眼看着。精神上的压迫比任何玩具都更折磨人。",
+      "雅各布轻声告诉他“你只是个可以被随时丢弃的玩具”，同时用玩具持续刺激，让身体和自尊同时崩溃。",
+      "他不允许格赫罗斯高潮，却一直用吮吸玩具吊着他。每一次快到顶点就被强行拉开，精神被反复拉扯。",
+      "雅各布用最温柔的语气说着最残酷的命令。格赫罗斯明明恨得发抖，却因为长期的精神控制而无法真正反抗。"
+    ]
+  },
+  raven: {
+    nipple: [
+      "渡鸦的牙齿轻轻啃咬乳尖，时而用舌尖舔过被咬过的地方。刺痛与湿热交替，格赫罗斯忍不住轻轻发抖。",
+      "啃咬的力度逐渐加重，乳尖被含在嘴里细细研磨。格赫罗斯的手指插入渡鸦的头发，却不知道是想推开还是按得更近。",
+      "渡鸦故意在乳头上留下浅浅的齿痕，然后用嘴唇安抚。格赫罗斯的胸口又疼又麻，呼吸紊乱。",
+      "两边乳头轮流被啃咬、吮吸。格赫罗斯已经有些意识模糊，只觉得胸口像被点燃了一样。",
+      "渡鸦抬起头，嘴角还带着一点水光，低声说了句什么。格赫罗斯没听清，只觉得被咬过的地方还在跳动。"
+    ],
+    clit: [
+      "渡鸦的手指捏住阴蒂，缓缓向外拉扯。拉长的快感混着细微的痛感，让格赫罗斯的声音都变了调。",
+      "拉到一定程度后突然松开，阴蒂弹回原位的瞬间带来更强烈的刺激。格赫罗斯的腿剧烈颤抖。",
+      "反复的拉扯让阴蒂充血肿胀，变得异常敏感。渡鸦只用指尖轻轻碰一下，格赫罗斯就会猛地收缩。",
+      "渡鸦用两指夹住阴蒂快速搓动，同时偶尔向外拉。格赫罗斯已经说不出完整的话，只剩下喘息和呜咽。",
+      "持续的拉扯几乎要把那颗小核玩坏。格赫罗斯的眼前阵阵发黑，小腹深处不断涌出热流。"
+    ],
+    anal: [
+      "渡鸦的手指一根一根探入后穴，耐心而强硬地扩张。格赫罗斯能感觉到指节的形状，以及体内被搅动的感觉。",
+      "两根手指在体内弯曲、刮擦，故意按压某个点。格赫罗斯的腰猛地一弹，后穴死死绞住入侵的手指。",
+      "抽插的速度越来越快，指奸的水声清晰可闻。格赫罗斯的羞耻心几乎要被彻底击溃。",
+      "渡鸦加入第三根手指，后穴被撑到极限。酸胀与快感同时席卷，格赫罗斯的眼泪都出来了。",
+      "手指在最深处快速搅动，格赫罗斯已经完全无法控制自己的声音，只能任由身体被玩弄。"
+    ],
+    pussy: [
+      "冰凉的枪口抵上湿润的小逼入口。金属的硬度与温度让格赫罗斯全身一僵，却又不受控制地分泌更多液体。",
+      "渡鸦缓慢地把枪口往里推。枪管一点点撑开柔软的肉壁，格赫罗斯能清楚感觉到每一寸被侵入的感觉。",
+      "枪口在体内小幅度抽插，金属刮过敏感点的感觉又冷又烫。格赫罗斯的手指死死抓紧身下的东西。",
+      "渡鸦故意把枪口抵在最深处，轻轻转动。格赫罗斯的小腹抽搐着，几乎要当场高潮。",
+      "抽出时带出大量透明的液体，枪口上亮晶晶的。渡鸦看了一眼，又重新顶了进去。格赫罗斯已经哭出了声。"
+    ],
+    comfort: [
+      "渡鸦把武器收起，只用手臂环住格赫罗斯。今天的力度收了回来，格赫罗斯靠在他胸口，慢慢平静。",
+      "没有继续的侵犯。渡鸦用干净的布擦去他腿间的狼藉，动作意外地轻。格赫罗斯有些恍惚。",
+      "渡鸦只是让他坐在自己腿上，手掌放在他后腰轻轻拍着。格赫罗斯把脸埋进他颈窝，呼吸渐渐平稳。",
+      "安静的几分钟。渡鸦没有说话，也没有再碰那些地方。格赫罗斯难得感到一种奇怪的安全。",
+      "渡鸦用拇指擦去他眼角的泪，低声说了句“够了”。格赫罗斯点点头，靠得更近了一些。"
+    ],
+    abuse: [
+      "渡鸦直接用枪托狠狠顶进格赫罗斯已经敏感的小逼，动作粗暴得没有任何缓冲。疼痛让他瞬间失声。",
+      "他抓住格赫罗斯的头发往后拉，同时用手指粗暴地抽插后穴，完全不顾及他的感受。",
+      "渡鸦把格赫罗斯按在墙上，用膝盖强行分开他的腿，然后毫不留情地扇打已经红肿的小逼。",
+      "枪口再次被塞进去，这次抽插的力度和速度都带着明显的泄愤。格赫罗斯的泪水失控地往下掉。",
+      "渡鸦在他耳边用最粗俗的话骂他，同时用身体死死压住他，让他连挣扎的空间都没有。"
+    ]
+  },
+  prometheus: {
+    nipple: [
+      "罗米修斯抬手，结实的巴掌落在一侧乳房上。清脆的响声后，乳肉晃动，乳头瞬间充血挺立。",
+      "左右交替扇打，力道不重却足够让皮肤发红。格赫罗斯的胸口火辣辣的，却又隐隐发麻发烫。",
+      "扇完后罗米修斯用指尖弹了弹已经红肿的乳尖，格赫罗斯忍不住轻哼出声。",
+      "巴掌故意落在乳尖上，又疼又麻的感觉直冲大脑。格赫罗斯的腰跟着每一次拍打轻轻颤。",
+      "持续的扇打让两边乳房都染上艳红。罗米修斯停下后，只用指腹轻轻摩挲，格赫罗斯反而更敏感了。"
+    ],
+    clit: [
+      "罗米修斯抬起靴子，鞋底轻轻踩在肿胀的阴蒂上。压力从上方传来，格赫罗斯的呼吸瞬间停滞。",
+      "鞋底缓慢碾压、转动。阴蒂被压得扁扁的，又疼又爽的感觉几乎要把理智碾碎。",
+      "罗米修斯控制着力道，时而加重时而放松。格赫罗斯的小逼不受控制地收缩，液体沾湿了鞋底。",
+      "踩踏的同时罗米修斯还用靴尖轻轻拨弄。格赫罗斯已经完全说不出话，只能发出破碎的呜咽。",
+      "当压力突然加大，格赫罗斯的腰猛地弓起，眼前阵阵发白。罗米修斯却只是淡淡地看着他。"
+    ],
+    anal: [
+      "温热的液体再次被灌入后穴。这次的量比之前更多，格赫罗斯的小腹明显鼓了起来。",
+      "罗米修斯不紧不慢地控制着灌肠的速度，偶尔按压他的小腹。格赫罗斯感觉自己像个被填满的容器。",
+      "灌到极限时，罗米修斯堵住穴口，命令他夹紧。格赫罗斯的腿根发抖，后穴拼命收缩。",
+      "液体在体内晃动的感觉清晰又羞耻。格赫罗斯的眼眶发红，却还是忍住了。",
+      "当终于被允许排出时，强烈的释放感让格赫罗斯几乎脱力。罗米修斯却已经准备好了下一轮。"
+    ],
+    pussy: [
+      "罗米修斯的巴掌轻轻落在湿润的小逼上。力道不重，却精准地打在最敏感的地方。",
+      "一下接一下，拍打声混着水声。格赫罗斯的腿根已经红了，小逼却还在不断吐出液体。",
+      "扇打的间隙罗米修斯会用指尖刮过被打过的缝隙，格赫罗斯敏感得几乎要哭出来。",
+      "持续的轻扇让小逼又热又麻，肿胀得更厉害。罗米修斯似乎很满意这个结果。",
+      "最后几下稍微加重了力道。格赫罗斯的腰猛地一颤，小逼剧烈收缩，几乎要高潮。"
+    ],
+    comfort: [
+      "罗米修斯停下所有动作，只是把格赫罗斯拉进怀里。今天到此为止。格赫罗斯靠着他，慢慢回过神。",
+      "没有继续的责罚。罗米修斯用干净的布擦拭他身上的痕迹，动作意外地细致。",
+      "罗米修斯让他躺好休息，自己坐在一旁。格赫罗斯看着他的侧脸，忽然觉得有些不真实。",
+      "只是简单的触碰——手指穿过头发，掌心贴在后背。格赫罗斯的呼吸渐渐平稳下来。",
+      "罗米修斯没有说话，只是安静地陪着。格赫罗斯把脸埋进他衣服里，第一次主动靠近。"
+    ],
+    abuse: [
+      "罗米修斯直接抬起靴子，用力踩在格赫罗斯的阴蒂上，力道远超平时的“试验”。疼痛让他瞬间惨叫出声。",
+      "他没有循序渐进，直接连续扇打已经红肿的乳房和乳头，每一下都带着明确的惩罚意味。",
+      "灌肠的量被强行加到极限，同时罗米修斯按住他的喉咙，不让他发出太大声音。直接、冷酷。",
+      "罗米修斯用手指狠狠抠挖后穴，动作生硬而粗暴，完全把格赫罗斯当成可以随意处置的试验体。",
+      "他当着格赫罗斯的面冷淡地记录着“反应数据”，同时继续施加超出承受范围的刺激，眼神里没有半点温度。"
+    ]
+  }
+};
+
+// Higher day intensity texts (extra flavor)
+const intenseExtra = [
+  "（身体已经开始习惯这种刺激，反应却越来越强烈）",
+  "（敏感度攀升后，每一次触碰都像电流穿过神经）",
+  "（格赫罗斯的意识有些模糊，只剩下身体在诚实地回应）",
+  "（堕落的快感已经刻进本能，他甚至开始主动迎合）",
+  "（再这样下去，他真的会彻底坏掉……）"
+];
+
+// ========== FUNCTIONS ==========
+function startGame() {
+  document.getElementById('start-screen').classList.remove('active');
+  document.getElementById('select-screen').classList.add('active');
+}
+
+function selectTrainer(t) {
+  trainer = t;
+  document.getElementById('select-screen').classList.remove('active');
+  document.getElementById('game-screen').classList.add('active');
+  remaining = 5;
+  dayAllComfort = true;
+  actionLog = [];
+  updateUI();
+  renderActions();
+  addLog(`【DAY ${day}】调教师：${getTrainerName(t)} 已就位。格赫罗斯被带到调教室……`);
+}
+
+function getTrainerName(t) {
+  return {hudson:'哈德森', jacob:'雅各布', raven:'渡鸦', prometheus:'罗米修斯'}[t];
+}
+
+function renderActions() {
+  const area = document.getElementById('action-area');
+  area.innerHTML = '';
+  const list = actions[trainer];
+  list.forEach((a, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn action-btn';
+    btn.textContent = a.name;
+    btn.onclick = () => doAction(idx);
+    if (remaining <= 0) btn.disabled = true;
+    area.appendChild(btn);
+  });
+}
+
+function getIncrease(baseMin, baseMax) {
+  // Progressive: day 1 base, later days higher
+  const bonus = Math.floor((day - 1) * 1.8);
+  const min = baseMin + bonus;
+  const max = baseMax + bonus + Math.floor(day / 2);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function doAction(idx) {
+  if (remaining <= 0) return;
+  const act = actions[trainer][idx];
+  const isComfort = act.id === 'comfort';
+  const isAbuse = act.id === 'abuse';
+  
+  if (!isComfort) {
+    comfortOnly = false;
+    dayAllComfort = false;
+  }
+  
+  let increase = 0;
+  let part = act.id;
+  let hatredGain = 0;
+  
+  if (isAbuse) {
+    // 虐待：只增加憎恶度，不增加敏感度
+    hatredGain = Math.floor(Math.random() * 6) + 10; // 10-15
+    hatred = Math.min(999, hatred + hatredGain);
+  } else if (!isComfort) {
+    increase = getIncrease(act.baseMin, act.baseMax);
+    sens[part] = Math.min(200, sens[part] + increase);
+  }
+  
+  // Pick text
+  const pool = texts[trainer][act.id];
+  let text = pool[Math.floor(Math.random() * pool.length)];
+  if (day >= 5 && !isComfort && !isAbuse) {
+    text += ' ' + intenseExtra[Math.floor(Math.random() * intenseExtra.length)];
+  }
+  if (day >= 8 && !isComfort && !isAbuse) {
+    text += ' 格赫罗斯的身体已经彻底记住了这种感觉……';
+  }
+  
+  // Log
+  let logMsg = `【调教】${act.name}`;
+  if (isAbuse) {
+    logMsg += `（憎恶度 +${hatredGain}）`;
+  } else if (!isComfort) {
+    logMsg += `（${partName[part]} +${increase}）`;
+  }
+  logMsg += `<br>${text}`;
+  addLog(logMsg);
+  
+  actionLog.push({name: act.name, part, increase, isComfort, isAbuse, hatredGain});
+  
+  remaining--;
+  updateUI();
+  renderActions();
+  
+  // 检查憎恶度
+  if (isAbuse) {
+    checkHatred();
+  }
+  
+  // Check thresholds (敏感度)
+  if (!isComfort && !isAbuse) {
+    checkThresholds(part);
+  }
+  
+  // Check all 200
+  if (sens.nipple >= 200 && sens.clit >= 200 && sens.anal >= 200 && sens.pussy >= 200) {
+    setTimeout(() => endGame('bad'), 800);
+    return;
+  }
+  
+  // 憎恶度超过200直接背叛结局
+  if (hatred > 200) {
+    setTimeout(() => endGame('betray'), 800);
+    return;
+  }
+  
+  if (remaining <= 0) {
+    setTimeout(showClimaxAndSummary, 600);
+  }
+}
+
+function checkThresholds(part) {
+  const val = sens[part];
+  const m = milestones[part];
+  
+  if (val >= 50 && !m[50]) {
+    m[50] = true;
+    triggerThreshold(part, 50);
+  } else if (val >= 80 && !m[80]) {
+    m[80] = true;
+    triggerThreshold(part, 80);
+  } else if (val >= 100 && !m[100]) {
+    m[100] = true;
+    triggerThreshold(part, 100);
+  } else if (val >= 150 && !m[150]) {
+    m[150] = true;
+    triggerThreshold(part, 150);
+  } else if (val >= 200 && !m[200]) {
+    m[200] = true;
+    triggerThreshold(part, 200);
+  }
+}
+
+function triggerThreshold(part, level) {
+  const flash = document.getElementById('flash');
+  const modal = document.getElementById('threshold-modal');
+  const content = document.getElementById('threshold-content');
+  const title = document.getElementById('th-title');
+  const msg = document.getElementById('th-msg');
+  
+  let flashClass = '';
+  let bg = '';
+  let color = '';
+  let message = '';
+  
+  if (level === 50) {
+    flashClass = 'flash-red';
+    bg = '#000'; color = '#f00';
+    message = `格赫罗斯的${partName[part]}已经变得更淫乱了！深深地堕落下去吧…`;
+  } else if (level === 80) {
+    flashClass = 'flash-pink';
+    bg = '#ff69b4'; color = '#f00';
+    message = `格赫罗斯的${partName[part]}已经变得非常淫乱了~请继续使用`;
+  } else if (level === 100) {
+    flashClass = 'flash-deep';
+    bg = '#f00'; color = '#000';
+    message = `格赫罗斯已经是你最骚的婊子了…请尽情享用！`;
+  } else if (level === 150) {
+    flashClass = 'flash-pink';
+    bg = '#111'; color = '#ff69b4';
+    message = `${partName[part]}变得熟透了，离不开主人了…`;
+  } else if (level === 200) {
+    flashClass = 'flash-deep';
+    bg = '#200'; color = '#f00';
+    message = `${partName[part]}已经不能再继续了，快要坏掉了…`;
+  }
+  
+  // Flash
+  flash.className = 'flash ' + flashClass;
+  setTimeout(() => { flash.className = 'flash'; }, 700);
+  
+  // Modal
+  content.style.background = bg;
+  content.style.color = color;
+  content.style.border = `3px solid ${color === '#000' ? '#f00' : color}`;
+  title.textContent = level >= 150 ? '极限预警' : '敏感度突破';
+  msg.textContent = message;
+  modal.classList.add('show');
+}
+
+function closeThreshold() {
+  document.getElementById('threshold-modal').classList.remove('show');
+}
+
+function addLog(html) {
+  const log = document.getElementById('log');
+  const p = document.createElement('p');
+  p.innerHTML = html;
+  log.appendChild(p);
+  log.scrollTop = log.scrollHeight;
+}
+
+function updateUI() {
+  document.getElementById('s-affection').textContent = affection;
+  document.getElementById('s-hatred').textContent = hatred;
+  document.getElementById('s-nipple').textContent = sens.nipple;
+  document.getElementById('s-clit').textContent = sens.clit;
+  document.getElementById('s-anal').textContent = sens.anal;
+  document.getElementById('s-pussy').textContent = sens.pussy;
+  document.getElementById('day-display').textContent = `DAY ${day}`;
+  document.getElementById('rem-count').textContent = remaining;
+}
+
+function checkHatred() {
+  if (hatred > 100 && !hatredWarned) {
+    hatredWarned = true;
+    // 弹出不满警告
+    const modal = document.getElementById('threshold-modal');
+    const content = document.getElementById('threshold-content');
+    const title = document.getElementById('th-title');
+    const msg = document.getElementById('th-msg');
+    
+    content.style.background = '#111';
+    content.style.color = '#f00';
+    content.style.border = '3px solid #f00';
+    title.textContent = '警告';
+    msg.textContent = '他似乎有些不满，对你的眼神里没有温柔';
+    modal.classList.add('show');
+    
+    // 红色频闪
+    const flash = document.getElementById('flash');
+    flash.className = 'flash flash-red';
+    setTimeout(() => { flash.className = 'flash'; }, 700);
+  }
+}
+
+function showClimaxAndSummary() {
+  // 如果当天全部只选了安抚 → 不高潮，改为依赖/忠诚反馈
+  if (dayAllComfort) {
+    const depTexts = [
+      `今天没有被玩弄。格赫罗斯只是被一次次安抚着，他渐渐把脸埋进调教师怀里，呼吸变得平稳而依赖……他开始有些离不开这种被温柔对待的感觉了。`,
+      `整整一天都只是安抚。格赫罗斯没有高潮，却在持续的轻柔触碰中变得越来越黏人，眼神里多了一丝忠心和安心。`,
+      `没有激烈的刺激。格赫罗斯在安抚中慢慢放松下来，身体虽然没有被开发，心却悄悄向对方倾斜，忠诚的种子开始发芽。`,
+      `五次都只是安抚。格赫罗斯没有高潮的颤抖，只是安静地靠着，像一只被驯服的乖小狗，依赖感越来越深。`,
+      `今天格赫罗斯没有被玩弄到高潮。他只是被抱着、被摸着头发，渐渐把调教师当成了可以依靠的存在，忠诚与依赖在悄然加深。`
+    ];
+    addLog(`<span class="highlight">【依赖】</span>${depTexts[Math.floor(Math.random() * depTexts.length)]}`);
+  } else {
+    // 正常高潮
+    const parts = Object.keys(sens);
+    const highest = parts.reduce((a, b) => sens[a] > sens[b] ? a : b);
+    const climaxTexts = [
+      `格赫罗斯的身体猛地绷紧，${partName[highest]}传来的快感终于突破临界点。他仰起头，发出破碎的呻吟，整个人剧烈颤抖着达到了高潮……`,
+      `积蓄已久的快感瞬间爆发。格赫罗斯的眼前一片空白，小腹剧烈抽搐，透明的液体不断涌出。他几乎要晕过去。`,
+      `“哈啊……！”格赫罗斯的声音完全变了调。高潮来得又急又猛，他的腿根痉挛着，后穴和小逼同时收缩，久久无法平复。`,
+      `在连续的刺激下，格赫罗斯终于彻底崩溃。他哭叫着达到高潮，身体像离水的鱼一样弹动，好一会儿才软倒下来。`
+    ];
+    addLog(`<span class="highlight">【高潮】</span>${climaxTexts[Math.floor(Math.random()*climaxTexts.length)]}`);
+  }
+  
+  // Summary
+  setTimeout(() => {
+    document.getElementById('sum-day').textContent = day;
+    let html = `<p>今日调教次数：5次</p><ul style="margin:10px 0 15px 20px;">`;
+    actionLog.forEach(a => {
+      if (a.isAbuse) {
+        html += `<li>${a.name}（憎恶度 +${a.hatredGain}）</li>`;
+      } else if (a.isComfort) {
+        html += `<li>${a.name}（无增加）</li>`;
+      } else {
+        html += `<li>${a.name}（${partName[a.part]} +${a.increase}）</li>`;
+      }
+    });
+    html += `</ul>`;
+    html += `<p>当前敏感度：</p>
+      <p style="color:#ff69b4;">乳头 ${sens.nipple}　阴蒂 ${sens.clit}　后穴 ${sens.anal}　小逼 ${sens.pussy}</p>`;
+    html += `<p style="margin-top:8px;">好感度：<span style="color:#ff69b4;">${affection}</span>　憎恶度：<span style="color:#ff2222;">${hatred}</span></p>`;
+    
+    if (dayAllComfort) {
+      if (day < 10) {
+        html += `<p style="margin-top:15px;color:#ffb6c1;">今天格赫罗斯没有被玩弄，却变得更加依赖和忠诚了……明天还会继续。</p>`;
+      } else {
+        html += `<p style="margin-top:15px;color:#ffb6c1;">十天的调教已经结束。他一直被温柔对待着。</p>`;
+      }
+    } else {
+      if (day < 10) {
+        html += `<p style="margin-top:15px;color:#ffaaaa;">格赫罗斯的身体又进一步被开发了……明天还会继续。</p>`;
+      } else {
+        html += `<p style="margin-top:15px;color:#ffaaaa;">十天的调教已经结束。</p>`;
+      }
+    }
+    
+    document.getElementById('sum-text').innerHTML = html;
+    document.getElementById('summary-modal').classList.add('show');
+  }, 900);
+}
+
+function nextDay() {
+  document.getElementById('summary-modal').classList.remove('show');
+  
+  if (day >= 10) {
+    // Determine ending
+    if (comfortOnly) {
+      endGame('hidden');
+    } else {
+      endGame('good');
+    }
+    return;
+  }
+  
+  day++;
+  remaining = 5;
+  dayAllComfort = true;
+  actionLog = [];
+  document.getElementById('log').innerHTML = '';
+  updateUI();
+  renderActions();
+  addLog(`【DAY ${day}】新的一天。调教师${getTrainerName(trainer)}再次出现在格赫罗斯面前……`);
+}
+
+function endGame(type) {
+  document.getElementById('game-screen').classList.remove('active');
+  document.getElementById('summary-modal').classList.remove('show');
+  document.getElementById('threshold-modal').classList.remove('show');
+  document.getElementById('ending-screen').classList.add('active');
+  
+  const title = document.getElementById('end-title');
+  const desc = document.getElementById('end-desc');
+  const tag = document.getElementById('end-tag');
+  
+  if (type === 'bad') {
+    title.style.color = '#f00';
+    title.textContent = '格赫罗斯被你玩死了';
+    desc.textContent = '所有敏感带都已彻底坏掉。他的身体再也承受不住更多刺激，在最后一次高潮中彻底失去了意识……';
+    tag.className = 'ending-tag bad';
+    tag.textContent = '坏结局';
+    unlockEnding('bad');
+  } else if (type === 'betray') {
+    title.style.color = '#f00';
+    title.textContent = '你死了';
+    desc.textContent = '你的虐待，你的伤害，他背叛了。格赫罗斯眼中最后一丝温情彻底熄灭，在某个你放松警惕的瞬间，他反击了。你再也无法醒来。';
+    tag.className = 'ending-tag bad';
+    tag.textContent = '背叛结局';
+    unlockEnding('betray');
+  } else if (type === 'good') {
+    // 憎恶度 100~200 之间走“恨意残留”变体结局
+    const hasHate = (hatred > 100 && hatred < 200);
+    
+    if (trainer === 'jacob') {
+      title.style.color = hasHate ? '#ff4444' : '#ff69b4';
+      title.textContent = hasHate ? '他恨你，但是无法拒绝你' : '你拥有了一条骚小狗';
+      desc.textContent = hasHate 
+        ? '雅各布把格赫罗斯调教成了敏感的骚小狗，可憎恶度已经刻进了骨头里。他会主动把身体送到你手里，眼神却冰冷。他恨你，却因为长期的精神控制与身体依赖，根本无法真正离开你。'
+        : '十天的调教结束了。在雅各布的乳夹、吮吸玩具和肛塞下，格赫罗斯被彻底开发成一条敏感又会撒娇的骚小狗。他会主动把身体送到你手里，用湿润的眼神求你继续玩他。永远记得这些日子，也永远属于你。';
+      tag.className = 'ending-tag good';
+      tag.textContent = hasHate ? '雅各布线路 · 恨意残留' : '雅各布线路 · 好结局';
+      unlockEnding(hasHate ? 'jacob_hate' : 'jacob_good');
+    } else if (trainer === 'raven') {
+      title.style.color = hasHate ? '#ff4444' : '#ff4500';
+      title.textContent = hasHate ? '谁说囚犯不能在典狱长头上拉屎？' : '肥美飞机杯';
+      desc.textContent = hasHate
+        ? '渡鸦把格赫罗斯养成了肥美飞机杯，可憎恶已经压过了服从。身为典狱长的格赫罗斯在某个深夜终于反客为主——谁说囚犯不能在典狱长头上拉屎？你最好小心点。'
+        : '渡鸦用枪口、手指和啃咬把格赫罗斯的小逼与后穴彻底塑造成了最合手的肥美飞机杯。软、热、会自己吸吮，插进去就死死缠住不放。用完可以随手扔在一边，下次想用的时候再拎起来继续操。完美的专属飞机杯，已经养熟了。';
+      tag.className = 'ending-tag good';
+      tag.textContent = hasHate ? '渡鸦线路 · 恨意残留' : '渡鸦线路 · 好结局';
+      unlockEnding(hasHate ? 'raven_hate' : 'raven_good');
+    } else if (trainer === 'hudson') {
+      title.style.color = hasHate ? '#ff4444' : '#ff69b4';
+      title.textContent = hasHate ? '一条不那么乖训的狗' : '实用肉便器';
+      desc.textContent = hasHate
+        ? '哈德森把格赫罗斯调教成了实用肉便器，可憎恨让他不再那么乖。他依然会张开身体给你用，却时不时露出獠牙。一条不那么乖训的狗，用起来要小心被反咬。'
+        : '哈德森把格赫罗斯调教成了最实用的肉便器。乳头、阴蒂、小逼、后穴全都敏感顺从，随时可以拿来发泄。他不会哭闹，也不会反抗，只会乖乖张开身体接受一切。没有多余的感情戏，只有最直接、最方便的肉体使用价值——一个真正好用的肉便器。';
+      tag.className = 'ending-tag good';
+      tag.textContent = hasHate ? '哈德森线路 · 恨意残留' : '哈德森线路 · 好结局';
+      unlockEnding(hasHate ? 'hudson_hate' : 'hudson_good');
+    } else if (trainer === 'prometheus') {
+      title.style.color = hasHate ? '#ff4444' : '#da70d6';
+      title.textContent = hasHate ? '带着淫乱的护卫' : '最佳试验品';
+      desc.textContent = hasHate
+        ? '罗米修斯得到了最佳试验品，可憎恶让格赫罗斯在顺从中夹杂着危险。他依然会配合所有试验，却像一只带着毒刺的护卫——随时可能在你最放松的时候反噬。'
+        : '罗米修斯的试验完美成功。格赫罗斯的身体反应、敏感阈值、极限耐受度都被精确开发和记录。扇打、踩踏、灌肠……每一种刺激都能得到最理想的反馈。他已经没有自我，只剩下被不断测试与使用的价值。最佳试验品，就此诞生。';
+      tag.className = 'ending-tag good';
+      tag.textContent = hasHate ? '罗米修斯线路 · 恨意残留' : '罗米修斯线路 · 好结局';
+      unlockEnding(hasHate ? 'prometheus_hate' : 'prometheus_good');
+    }
+  } else {
+    // 隐藏结局（全程安抚）
+    title.style.color = '#ffb6c1';
+    title.textContent = '你拥有了一个忠心的乖小狗';
+    desc.textContent = '只是不太会讨你欢心。十天里你几乎没有真正玩弄他，格赫罗斯对你产生了依赖，却少了那份被彻底开发后的淫乱与渴望。';
+    tag.className = 'ending-tag hidden';
+    tag.textContent = '隐藏结局';
+    unlockEnding('hidden');
+    
+    // 给隐藏结局额外增加「继续培养」按钮
+    const btnBox = document.getElementById('end-buttons');
+    btnBox.innerHTML = `
+      <button class="btn" onclick="location.reload()">重新开始</button>
+      <button class="btn" style="background:#ff69b4; margin-left:12px;" onclick="startCultivate()">继续培养</button>
+    `;
+  }
+}
+
+// ==================== 继续培养模式 ====================
+const cultivateActions = [
+  { id: 'flirt', name: '调情' },
+  { id: 'comfort2', name: '安抚' },
+  { id: 'feed', name: '喂食' },
+  { id: 'company', name: '陪伴' }
+];
+
+const cultivateTexts = {
+  flirt: [
+    "你故意靠近他，低声说了几句暧昧的话。格赫罗斯的耳朵瞬间红了，却没有躲开。",
+    "你用指尖轻轻划过他的手背，带着明显的挑逗意味。他呼吸乱了一拍，眼神有些躲闪。",
+    "调情的话语让格赫罗斯又羞又有些期待，他下意识咬了咬下唇，好感却莫名往下掉了一点。",
+    "你笑着调侃他今天很听话，他别过脸去，耳根却烧得通红。",
+    "带着一点坏心的调情让他既想靠近又想逃，羞耻感和复杂的情绪同时涌上来。"
+  ],
+  comfort2: [
+    "你只是安静地抱着他，手掌一下下顺着他的背。格赫罗斯渐渐放松，把脸埋进你怀里。",
+    "安抚的动作很轻，他却像找到了安全的港湾，依赖感明显加深。",
+    "你帮他整理头发，低声说没关系。他点点头，眼神软了下来。",
+    "单纯的拥抱和轻拍让他的紧张一点点消散，好感与依赖都在悄悄上涨。",
+    "今天没有多余的动作，只是陪伴式的安抚。格赫罗斯靠着你，呼吸变得平稳而安心。"
+  ],
+  feed: [
+    "你把准备好的食物递到他嘴边。格赫罗斯先是愣了一下，随后乖乖张开嘴，吃得有些小口。",
+    "喂食的过程意外地温馨。他偶尔抬眼看你，眼神里带着软软的依赖。",
+    "你擦去他嘴角的一点残渣，他脸红了，却没有躲开你的手。",
+    "被细心喂食让他感到被照顾的感觉，好感明显上升，羞耻也悄悄退散了一些。",
+    "格赫罗斯吃得很认真，偶尔发出小小的满足声。这种被喂养的感觉让他更依赖你了。"
+  ],
+  company: [
+    "你们只是安静地坐在一起，什么也没做。格赫罗斯却把身体一点点靠近你。",
+    "陪伴本身就是最好的安慰。他靠着你的肩膀，呼吸渐渐与你同步。",
+    "没有言语，只有存在。格赫罗斯的手指悄悄勾住了你的衣角。",
+    "长时间的安静陪伴让他的心防一点点放下，依赖和好感都在稳定上升。",
+    "你只是陪着他，偶尔揉揉他的头发。他闭着眼睛，像一只安心的小猫。"
+  ]
+};
+
+function startCultivate() {
+  isCultivate = true;
+  day = 1;
+  remaining = 5;
+  dayAllComfort = true;
+  actionLog = [];
+  inviteTriggered = false;
+  
+  // 基于隐藏结局的初始值（纯安抚后的状态）
+  affection = 45;
+  dependence = 55;
+  shame = 75;
+  hatred = 0;
+  
+  // 切换到粉色主题
+  document.body.style.background = '#fff0f5';
+  document.body.style.borderColor = '#ff1493';
+  document.body.style.color = '#c71585';
+  
+  // 隐藏原游戏界面，显示培养界面
+  document.getElementById('ending-screen').classList.remove('active');
+  document.getElementById('game-screen').classList.add('active');
+  
+  // 更新stats显示为培养模式
+  document.getElementById('stats').innerHTML = `
+    <span style="color:#ff69b4;">好感度：<span id="s-affection">${affection}</span></span><br>
+    <span style="color:#da70d6;">依赖度：<span id="s-dependence">${dependence}</span></span><br>
+    <span style="color:#ff69b4;">羞耻度：<span id="s-shame">${shame}</span></span>
+  `;
+  
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('day-display').style.color = '#ff1493';
+  document.getElementById('remaining').style.color = '#c71585';
+  
+  updateUI();
+  renderCultivateActions();
+  addLog(`【培养 DAY ${day}】你选择继续培养格赫罗斯。背景变得柔和，他看着你的眼神多了一丝期待……`);
+}
+
+function renderCultivateActions() {
+  const area = document.getElementById('action-area');
+  area.innerHTML = '';
+  cultivateActions.forEach((a, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn action-btn';
+    btn.style.background = '#ff69b4';
+    btn.style.color = '#fff';
+    btn.textContent = a.name;
+    btn.onclick = () => doCultivateAction(idx);
+    if (remaining <= 0) btn.disabled = true;
+    area.appendChild(btn);
+  });
+}
+
+function doCultivateAction(idx) {
+  if (remaining <= 0) return;
+  const act = cultivateActions[idx];
+  
+  let affChange = 0, depChange = 0, shameChange = 0;
+  
+  if (act.id === 'flirt') {
+    affChange = -(Math.floor(Math.random()*6) + 10); // -10~-15
+    shameChange = -(Math.floor(Math.random()*6) + 10); // -10~-15
+    depChange = Math.floor(Math.random()*14) + 5; // +5~18
+  } else if (act.id === 'comfort2') {
+    depChange = Math.floor(Math.random()*11) + 10; // +10~20
+    affChange = Math.floor(Math.random()*6) + 5; // +5~10
+    shameChange = -(Math.floor(Math.random()*11) + 10); // -10~-20
+  } else if (act.id === 'feed') {
+    depChange = Math.floor(Math.random()*5) + 8; // +8~12
+    affChange = Math.floor(Math.random()*7) + 12; // +12~18
+    shameChange = -(Math.floor(Math.random()*11) + 10); // -10~-20
+  } else if (act.id === 'company') {
+    depChange = Math.floor(Math.random()*6) + 15; // +15~20
+    affChange = Math.floor(Math.random()*7) + 10; // +10~16
+    shameChange = -(Math.floor(Math.random()*11) + 10); // -10~-20
+  }
+  
+  affection = Math.max(0, Math.min(200, affection + affChange));
+  dependence = Math.max(0, Math.min(200, dependence + depChange));
+  shame = Math.max(0, Math.min(100, shame + shameChange));
+  
+  // 文本
+  const pool = cultivateTexts[act.id];
+  const text = pool[Math.floor(Math.random() * pool.length)];
+  
+  let logMsg = `【${act.name}】`;
+  logMsg += `（好感 ${affChange>=0?'+':''}${affChange}　依赖 ${depChange>=0?'+':''}${depChange}　羞耻 ${shameChange>=0?'+':''}${shameChange}）`;
+  logMsg += `<br>${text}`;
+  addLog(logMsg);
+  
+  actionLog.push({name: act.name, affChange, depChange, shameChange});
+  
+  remaining--;
+  updateUI();
+  renderCultivateActions();
+  
+  // 检查好感150邀请
+  if (affection >= 150 && !inviteTriggered) {
+    inviteTriggered = true;
+    setTimeout(() => {
+      document.getElementById('invite-modal').classList.add('show');
+    }, 500);
+    return;
+  }
+  
+  // 检查好感200结局
+  if (affection >= 200) {
+    setTimeout(() => endCultivateByAffection(), 700);
+    return;
+  }
+  
+  if (remaining <= 0) {
+    setTimeout(showCultivateSummary, 600);
+  }
+}
+
+function handleInvite(yes) {
+  document.getElementById('invite-modal').classList.remove('show');
+  if (yes) {
+    affection = Math.max(0, Math.min(200, affection - 20));
+    dependence = Math.max(0, Math.min(200, dependence - 10));
+    shame = Math.min(100, shame + 30);
+    addLog(`<span class="highlight">【回应】</span>你选择了“是”。格赫罗斯的脸瞬间爆红，身体微微发抖……好感下降，羞耻大幅上升，依赖也受到了一点影响。`);
+    updateUI();
+    
+    // 如果因为这次降到了200以下，继续；如果还是高，再检查
+    if (affection >= 200) {
+      setTimeout(() => endCultivateByAffection(), 800);
+    }
+  } else {
+    addLog(`<span class="highlight">【回应】</span>你选择了“否”。格赫罗斯有些失落地点了点头，把到嘴边的话咽了回去，游戏继续。`);
+  }
+}
+
+function showCultivateSummary() {
+  // 简单总结，然后进入下一天或结局
+  setTimeout(() => {
+    document.getElementById('sum-day').textContent = day;
+    let html = `<p>今日行动：5次</p><ul style="margin:10px 0 15px 20px;">`;
+    actionLog.forEach(a => {
+      html += `<li>${a.name}（好感${a.affChange>=0?'+':''}${a.affChange} 依赖${a.depChange>=0?'+':''}${a.depChange} 羞耻${a.shameChange>=0?'+':''}${a.shameChange}）</li>`;
+    });
+    html += `</ul>`;
+    html += `<p>当前：好感 <span style="color:#ff69b4;">${affection}</span>　依赖 <span style="color:#da70d6;">${dependence}</span>　羞耻 <span style="color:#ff69b4;">${shame}</span></p>`;
+    
+    if (day < 10) {
+      html += `<p style="margin-top:15px;color:#c71585;">培养还在继续……明天会更好吗？</p>`;
+    } else {
+      html += `<p style="margin-top:15px;color:#c71585;">十天的培养已经结束。</p>`;
+    }
+    
+    document.getElementById('sum-text').innerHTML = html;
+    // 修改总结按钮行为
+    const sumBtn = document.querySelector('#summary-content .continue-btn');
+    if (sumBtn) {
+      sumBtn.onclick = nextCultivateDay;
+      sumBtn.textContent = day < 10 ? '进入下一天' : '查看结局';
+    }
+    document.getElementById('summary-modal').classList.add('show');
+  }, 400);
+}
+
+function nextCultivateDay() {
+  document.getElementById('summary-modal').classList.remove('show');
+  
+  if (day >= 10) {
+    endCultivateByDays();
+    return;
+  }
+  
+  day++;
+  remaining = 5;
+  actionLog = [];
+  document.getElementById('log').innerHTML = '';
+  updateUI();
+  renderCultivateActions();
+  addLog(`【培养 DAY ${day}】新的一天。格赫罗斯看到你，主动靠近了一点……`);
+}
+
+function endCultivateByAffection() {
+  // 好感达到200时的即时结局
+  let title = '', desc = '', tagText = '', key = '';
+  
+  if (dependence > 100 && shame < 50) {
+    title = '完美恋人';
+    desc = '好感、依赖都拉满，羞耻也降到了最低。格赫罗斯已经完全打开了心扉，愿意把一切都给你。你们成为了真正意义上的完美恋人。';
+    tagText = '完美恋人结局';
+    key = 'perfect_lover';
+  } else if (dependence > 100 && shame > 50) {
+    title = '羞涩的恋人';
+    desc = '他很爱你，也很依赖你，却依然保留着那份容易脸红的羞耻。每一次亲密都会让他害羞得不行，却又舍不得离开。';
+    tagText = '羞涩的恋人结局';
+    key = 'shy_lover';
+  } else if (dependence < 100 && shame < 50) {
+    title = '不愿依赖的恋人';
+    desc = '好感已经很高，羞耻也低了，可他始终不太愿意把重量都压在你身上。他爱你，却更想保持一点独立。';
+    tagText = '不愿依赖的恋人结局';
+    key = 'independent_lover';
+  } else {
+    // 其他组合归为浪荡的恋人
+    title = '浪荡的恋人';
+    desc = '好感拉满后，他变得大胆而主动。依赖不那么极端，羞耻也没有完全消失，却已经会用身体和眼神主动讨好你。';
+    tagText = '浪荡的恋人结局';
+    key = 'slutty_lover';
+  }
+  
+  unlockEnding(key);
+  showCultivateEnding(title, desc, tagText);
+}
+
+function endCultivateByDays() {
+  // 10天结束后的结局
+  let title = '', desc = '', tagText = '', key = '';
+  
+  if (affection < 200) {
+    if (dependence < 200 && shame > 50) {
+      title = '普通驯化结局';
+      desc = '十天过去了，好感没能突破200。他被你驯化得有些听话，却还保留着明显的羞耻和距离。算是普通的驯化成果。';
+      tagText = '普通驯化结局';
+      key = 'normal_train';
+    } else if (dependence >= 200 && shame < 50) {
+      title = '好用的炮友';
+      desc = '依赖拉得极高，羞耻几乎消失，好感却没到恋人的程度。他已经习惯被你使用，也享受被你使用，成为了一个好用的炮友。';
+      tagText = '好用的炮友结局';
+      key = 'fuckbuddy';
+    } else {
+      title = '普通驯化结局';
+      desc = '十天的培养告一段落。关系有了进展，却还没到质变的地步。或许还需要更多时间。';
+      tagText = '普通驯化结局';
+      key = 'normal_train';
+    }
+  } else {
+    // 理论上好感200会提前结束，这里兜底
+    endCultivateByAffection();
+    return;
+  }
+  
+  unlockEnding(key);
+  showCultivateEnding(title, desc, tagText);
+}
+
+function showCultivateEnding(title, desc, tagText) {
+  document.getElementById('game-screen').classList.remove('active');
+  document.getElementById('summary-modal').classList.remove('show');
+  document.getElementById('invite-modal').classList.remove('show');
+  document.getElementById('ending-screen').classList.add('active');
+  
+  const t = document.getElementById('end-title');
+  const d = document.getElementById('end-desc');
+  const tag = document.getElementById('end-tag');
+  
+  t.style.color = '#ff1493';
+  t.textContent = title;
+  d.textContent = desc;
+  tag.className = 'ending-tag good';
+  tag.textContent = tagText;
+  
+  // 只保留重新开始
+  document.getElementById('end-buttons').innerHTML = `<button class="btn" onclick="location.reload()">重新开始</button>`;
+}
+
+// 覆盖原来的 updateUI，让它兼容培养模式
+const originalUpdateUI = updateUI;
+updateUI = function() {
+  if (isCultivate) {
+    const affEl = document.getElementById('s-affection');
+    const depEl = document.getElementById('s-dependence');
+    const shameEl = document.getElementById('s-shame');
+    if (affEl) affEl.textContent = affection;
+    if (depEl) depEl.textContent = dependence;
+    if (shameEl) shameEl.textContent = shame;
+    document.getElementById('day-display').textContent = `DAY ${day}`;
+    document.getElementById('rem-count').textContent = remaining;
+  } else {
+    originalUpdateUI();
+  }
+};
+</script>
+</body>
+</html>
